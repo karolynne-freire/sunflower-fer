@@ -1,31 +1,25 @@
 import { useEffect, useState } from "react";
-import * as tf from "@tensorflow/tfjs";
-import "@tensorflow/tfjs-react-native";
-import { TFLiteModel, loadTFLiteModel } from "@tensorflow/tfjs-tflite";
-import { Asset } from "expo-asset";
+import { loadTensorflowModel, TensorflowModel } from "react-native-fast-tflite";
 
 export function useModel() {
-  const [model, setModel] = useState<TFLiteModel | null>(null);
+  const [model, setModel] = useState<TensorflowModel | null>(null);
   const [pronto, setPronto] = useState(false);
 
   useEffect(() => {
     async function carregar() {
       try {
-        await tf.ready();
-
-        const asset = Asset.fromModule(
-          require("../assets/modelo_emocoes_quant.tflite"),
+        const modeloCarregado = await loadTensorflowModel(
+          require("../../assets/modelo_emocoes_quant.tflite")
         );
-        await asset.downloadAsync();
 
-        const tflite = await loadTFLiteModel(asset.localUri!);
-        setModel(tflite);
+        setModel(modeloCarregado);
         setPronto(true);
-        console.log("✅ Modelo TFLite carregado!");
+        console.log("✅ Modelo carregado com sucesso!");
       } catch (e) {
         console.error("❌ Erro ao carregar modelo:", e);
       }
     }
+
     carregar();
   }, []);
 

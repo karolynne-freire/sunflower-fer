@@ -4,24 +4,38 @@
     "slug": "sunflower-app",
     "version": "1.0.0",
     "scheme": "sunflower",
-    "platforms": ["ios", "android"],
+    "platforms": [
+      "ios",
+      "android"
+    ],
     "plugins": [
       [
         "expo-camera",
         {
           "cameraPermission": "O Sunflower precisa da câmera para reconhecer emoções."
         }
-      ]
+      ],
+      "react-native-fast-tflite",
+      "expo-router"
     ],
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFF9E6"
       },
-      "package": "com.sunflower.app"
+      "package": "com.sunflower.app",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "ios": {
       "bundleIdentifier": "com.sunflower.app"
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "65e717d7-0281-4ead-aa66-f1c94fa56bee"
+      }
     }
   }
 }

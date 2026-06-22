@@ -8,7 +8,6 @@ import {
 } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImageManipulator from "expo-image-manipulator";
-import * as tf from "@tensorflow/tfjs";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { useModel } from "../hooks/useModel";
@@ -34,12 +33,39 @@ export default function Camera() {
 
   useEffect(() => {
     if (!pronto || !model) return;
-
     intervalRef.current = setInterval(detectar, 2000);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [pronto, model]);
+
+  function decodeBase64ToArray(base64String: string): Uint8Array {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+    const lookup = new Uint8Array(256);
+    for (let i = 0; i < chars.length; i++) {
+      lookup[chars.charCodeAt(i)] = i;
+    }
+    
+    let bufferLength = base64String.length * 0.75;
+    if (base64String[base64String.length - 1] === '=') {
+      bufferLength--;
+      if (base64String[base64String.length - 2] === '=') bufferLength--;
+    }
+    
+    const bytes = new Uint8Array(bufferLength);
+    let p = 0;
+    for (let i = 0; i < base64String.length; i += 4) {
+      const base641 = lookup[base64String.charCodeAt(i)];
+      const base642 = lookup[base64String.charCodeAt(i + 1)];
+      const base643 = lookup[base64String.charCodeAt(i + 2)];
+      const base644 = lookup[base64String.charCodeAt(i + 3)];
+      
+      bytes[p++] = (base641 << 2) | (base642 >> 4);
+      if (p < bufferLength) bytes[p++] = ((base642 & 15) << 4) | (base643 >> 2);
+      if (p < bufferLength) bytes[p++] = ((base643 & 3) << 6) | (base644 & 63);
+    }
+    return bytes;
+  }
 
   async function detectar() {
     if (!cameraRef.current || rodando || !model) return;
@@ -51,32 +77,38 @@ export default function Camera() {
         skipProcessing: true,
       });
 
-      if (!foto) return;
+      if (!foto || !foto.uri) return;
 
       const redim = await ImageManipulator.manipulateAsync(
         foto.uri,
         [{ resize: { width: IMG_SIZE, height: IMG_SIZE } }],
-        { format: ImageManipulator.SaveFormat.JPEG, base64: true },
+        { format: ImageManipulator.SaveFormat.JPEG, base64: true }
       );
 
       if (!redim.base64) return;
 
-      const bytes = Uint8Array.from(atob(redim.base64), (c) => c.charCodeAt(0));
-      const tensor = tf.tidy(() => {
-        const raw = tf.tensor(bytes, [IMG_SIZE, IMG_SIZE, 4], "int32");
-        const rgb = raw.slice([0, 0, 0], [IMG_SIZE, IMG_SIZE, 3]);
-        return rgb.toFloat().div(127.5).sub(1).expandDims(0);
-      });
+      const bytes = decodeBase64ToArray(redim.base64.replace(/\s/g, ''));
+      const input = new Float32Array(IMG_SIZE * IMG_SIZE * 3);
+      let j = 0;
+      
+      for (let i = 0; i < bytes.length; i += 4) {
+        if (j >= input.length) break;
+        input[j++] = (bytes[i]     / 127.5) - 1; // R
+        input[j++] = (bytes[i + 1] / 127.5) - 1; // G
+        input[j++] = (bytes[i + 2] / 127.5) - 1; // B
+      }
 
-      const saida = model.predict(tensor) as tf.Tensor;
-      const probs = await saida.data();
+      const resultado = await model.runInference([input]);
+      
+      if (resultado && resultado.length > 0) {
+        const probs = resultado[0] as Float32Array;
+        const arrayProbs = Array.from(probs);
+        const idx = arrayProbs.indexOf(Math.max(...arrayProbs));
+        
+        setEmocaoIdx(idx);
+        setConfianca(probs[idx]);
+      }
 
-      const idx = probs.indexOf(Math.max(...Array.from(probs)));
-      setEmocaoIdx(idx);
-      setConfianca(probs[idx]);
-
-      tensor.dispose();
-      saida.dispose();
     } catch (e) {
       console.error("Erro na detecção:", e);
     } finally {
@@ -108,9 +140,12 @@ export default function Camera() {
         {rodando && <ActivityIndicator color="#E6A817" size="small" />}
       </View>
 
-      <CameraView ref={cameraRef} style={styles.camera} facing="front">
-        <View style={styles.guiaRosto} />
-      </CameraView>
+      <View style={styles.cameraContainer}>
+        <CameraView ref={cameraRef} style={styles.camera} facing="front" />
+        <View style={styles.camOverlay} pointerEvents="none">
+          <View style={styles.guiaRosto} />
+        </View>
+      </View>
 
       <View style={styles.resultado}>
         {!pronto ? (
@@ -121,7 +156,9 @@ export default function Camera() {
         ) : emocaoIdx !== null ? (
           <EmocaoCard indice={emocaoIdx} confianca={confianca} />
         ) : (
-          <Text style={styles.aguardando}>Posicione o rosto na câmera 👆</Text>
+          <Text style={styles.aguardando}>
+            Posicione o rosto na câmera 👆
+          </Text>
         )}
       </View>
     </View>
@@ -136,7 +173,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justify: "space-between",
     paddingHorizontal: 20,
     paddingTop: 54,
     paddingBottom: 12,
@@ -152,10 +189,18 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#333",
   },
+  cameraContainer: {
+    flex: 1,
+    position: "relative",
+  },
   camera: {
     flex: 1,
+  },
+  camOverlay: {
+    ...StyleSheet.absoluteFillObject,
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "transparent",
   },
   guiaRosto: {
     width: 220,
@@ -174,7 +219,7 @@ const styles = StyleSheet.create({
   centro: {
     flex: 1,
     alignItems: "center",
-    justifyContent: "center",
+    justify: "center",
   },
   textoPermissao: {
     fontSize: 16,
