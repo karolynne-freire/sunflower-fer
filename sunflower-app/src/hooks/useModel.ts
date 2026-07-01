@@ -1,3 +1,4 @@
+// hooks/useModel.ts
 import { useEffect, useState } from "react";
 import { loadTensorflowModel, TensorflowModel } from "react-native-fast-tflite";
 
@@ -8,18 +9,17 @@ export function useModel() {
   useEffect(() => {
     async function carregar() {
       try {
+        // loadTensorflowModel é assíncrono — await necessário
         const modeloCarregado = await loadTensorflowModel(
-          require("../../assets/modelo_emocoes_quant.tflite")
+          require("../../assets/modelo_emocoes_quant.tflite"),
         );
-
         setModel(modeloCarregado);
         setPronto(true);
-        console.log("✅ Modelo carregado com sucesso!");
+        console.log("✅ Modelo carregado!");
       } catch (e) {
         console.error("❌ Erro ao carregar modelo:", e);
       }
     }
-
     carregar();
   }, []);
 

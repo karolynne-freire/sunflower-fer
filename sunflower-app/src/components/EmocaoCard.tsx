@@ -1,3 +1,4 @@
+// components/EmocaoCard.tsx
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { EMOCOES } from "../constants/emocoes";
@@ -12,6 +13,7 @@ export function EmocaoCard({ indice, confianca }: Props) {
   if (!emocao) return null;
 
   const pct = Math.round(confianca * 100);
+  const baixaConfianca = pct < 50;
 
   return (
     <View style={[styles.card, { borderColor: emocao.cor }]}>
@@ -27,6 +29,11 @@ export function EmocaoCard({ indice, confianca }: Props) {
           ]}
         />
       </View>
+
+      {/* Alerta de baixa confiança — importante para TEA */}
+      {baixaConfianca && (
+        <Text style={styles.alerta}>⚠️ Confirme com o especialista</Text>
+      )}
     </View>
   );
 }
@@ -44,20 +51,9 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 5,
   },
-  emoji: {
-    fontSize: 56,
-    marginBottom: 6,
-  },
-  nome: {
-    fontSize: 26,
-    fontWeight: "bold",
-    marginBottom: 4,
-  },
-  confianca: {
-    fontSize: 16,
-    color: "#888",
-    marginBottom: 12,
-  },
+  emoji: { fontSize: 56, marginBottom: 6 },
+  nome: { fontSize: 26, fontWeight: "bold", marginBottom: 4 },
+  confianca: { fontSize: 16, color: "#888", marginBottom: 12 },
   barraFundo: {
     width: "100%",
     height: 10,
@@ -65,8 +61,11 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     overflow: "hidden",
   },
-  barraPreenchida: {
-    height: 10,
-    borderRadius: 5,
+  barraPreenchida: { height: 10, borderRadius: 5 },
+  alerta: {
+    marginTop: 10,
+    fontSize: 12,
+    color: "#E6A817",
+    textAlign: "center",
   },
 });

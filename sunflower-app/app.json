@@ -3,36 +3,51 @@
     "name": "Sunflower",
     "slug": "sunflower-app",
     "version": "1.0.0",
+    "orientation": "portrait",
     "scheme": "sunflower",
-    "platforms": [
-      "ios",
-      "android"
-    ],
-    "plugins": [
-      [
-        "expo-camera",
-        {
-          "cameraPermission": "O Sunflower precisa da câmera para reconhecer emoções."
-        }
-      ],
-      "react-native-fast-tflite",
-      "expo-router"
-    ],
+    "icon": "",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#FFF9E6"
+        "backgroundColor": "#1D9E75"
       },
-      "package": "com.sunflower.app",
+      "package": "br.edu.ifpe.sunflower",
       "permissions": [
+        "CAMERA",
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO"
       ]
     },
     "ios": {
-      "bundleIdentifier": "com.sunflower.app"
+      "bundleIdentifier": "br.edu.ifpe.sunflower",
+      "infoPlist": {
+        "NSCameraUsageDescription": "O Sunflower precisa da câmera para reconhecer emoções."
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-camera",
+      [
+        "react-native-fast-tflite",
+        {
+          "enableCoreMLDelegate": false,
+          "enableXNNPackDelegate": true
+        }
+      ],
+      "expo-font",
+      "expo-asset"
+    ],
+    "experiments": {
+      "typedRoutes": true
     },
     "extra": {
-      "router": {},
+      "router": {
+        "origin": false
+      },
       "eas": {
         "projectId": "65e717d7-0281-4ead-aa66-f1c94fa56bee"
       }
