@@ -1,8 +1,11 @@
-// app/camera.tsx
 import React, { useEffect, useRef, useState } from "react";
 import {
-  View, Text, StyleSheet, TouchableOpacity,
-  ActivityIndicator, ScrollView,
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+  ScrollView,
 } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImageManipulator from "expo-image-manipulator";
@@ -14,7 +17,8 @@ import { EmocaoCard } from "../components/EmocaoCard";
 const IMG_SIZE = 96;
 
 function decodeBase64ToArray(base64: string): Uint8Array {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  const chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
   const lookup = new Uint8Array(256);
   for (let i = 0; i < chars.length; i++) lookup[chars.charCodeAt(i)] = i;
   const clean = base64.replace(/\s/g, "").replace(/=+$/, "");
@@ -36,7 +40,7 @@ function buildInputTensor(rgbBytes: Uint8Array): Float32Array {
   const expectedLen = IMG_SIZE * IMG_SIZE * 3;
   const input = new Float32Array(expectedLen);
   for (let i = 0; i < expectedLen && i < rgbBytes.length; i++) {
-    input[i] = (rgbBytes[i] / 127.5) - 1.0;
+    input[i] = rgbBytes[i] / 127.5 - 1.0;
   }
   return input;
 }
@@ -57,18 +61,22 @@ export default function Camera() {
 
   const addLog = (msg: string) => {
     console.log(msg);
-    setLog(prev => [...prev.slice(-8), msg]);
+    setLog((prev) => [...prev.slice(-8), msg]);
   };
 
+  // 1. Busca o nome armazenado no início
   useEffect(() => {
     AsyncStorage.getItem("nomeCrianca").then((n) => setNome(n ?? ""));
   }, []);
 
+  // 2. Solicita a permissão de forma segura se ainda não tiver sido concedida
   useEffect(() => {
-    if (!permission?.granted) requestPermission();
+    if (permission && !permission.granted && permission.canAskAgain) {
+      requestPermission();
+    }
   }, [permission]);
 
-  // Só inicia o intervalo quando câmera E modelo estiverem prontos
+  // 3. Controla o intervalo do modelo de IA
   useEffect(() => {
     if (!pronto || !model || !cameraReady) {
       addLog(`Aguardando: modelo=${pronto}, câmera=${cameraReady}`);
@@ -101,7 +109,11 @@ export default function Camera() {
       const redim = await ImageManipulator.manipulateAsync(
         foto.uri,
         [{ resize: { width: IMG_SIZE, height: IMG_SIZE } }],
-        { format: ImageManipulator.SaveFormat.JPEG, base64: true, compress: 0.8 }
+        {
+          format: ImageManipulator.SaveFormat.JPEG,
+          base64: true,
+          compress: 0.8,
+        },
       );
 
       if (!redim.base64) {
@@ -111,7 +123,9 @@ export default function Camera() {
 
       addLog(`🔢 Decodificando ${redim.base64.length} chars base64...`);
       const bytes = decodeBase64ToArray(redim.base64);
-      addLog(`📊 Bytes decodificados: ${bytes.length} (esperado: ${IMG_SIZE * IMG_SIZE * 3})`);
+      addLog(
+        `📊 Bytes decodificados: ${bytes.length} (esperado: ${IMG_SIZE * IMG_SIZE * 3})`,
+      );
 
       if (bytes.length < IMG_SIZE * IMG_SIZE * 3) {
         addLog("⚠️ Buffer insuficiente, pulando frame");
@@ -135,7 +149,6 @@ export default function Camera() {
       addLog(`✅ Predição: idx=${idx}, conf=${(conf * 100).toFixed(1)}%`);
       setEmocaoIdx(idx);
       setConfianca(conf);
-
     } catch (e: any) {
       const msg = e?.message ?? String(e);
       addLog(`❌ ERRO: ${msg}`);
@@ -145,10 +158,11 @@ export default function Camera() {
     }
   }
 
+  // --- TRAVAS DE SEGURANÇA NATIVA ---
   if (!permission) {
     return (
       <View style={styles.centro}>
-        <ActivityIndicator color="#E6A817" />
+        <ActivityIndicator color="#E6A817" size="large" />
         <Text style={styles.textoSimples}>Verificando permissões...</Text>
       </View>
     );
@@ -222,10 +236,12 @@ export default function Camera() {
         )}
       </View>
 
-      {/* Log de debug — remova depois que estiver funcionando */}
+      {/* Log de debug */}
       <ScrollView style={styles.logBox} contentContainerStyle={{ padding: 8 }}>
         {log.map((l, i) => (
-          <Text key={i} style={styles.logTexto}>{l}</Text>
+          <Text key={i} style={styles.logTexto}>
+            {l}
+          </Text>
         ))}
       </ScrollView>
     </View>
@@ -233,7 +249,7 @@ export default function Camera() {
 }
 
 const styles = StyleSheet.create({
-  container:       { flex: 1, backgroundColor: "#FFFDF0" },
+  container: { flex: 1, backgroundColor: "#FFFDF0" },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -243,10 +259,10 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     backgroundColor: "#FFFDF0",
   },
-  voltar:          { fontSize: 16, color: "#E6A817", fontWeight: "600" },
-  headerNome:      { fontSize: 18, fontWeight: "bold", color: "#333" },
+  voltar: { fontSize: 16, color: "#E6A817", fontWeight: "600" },
+  headerNome: { fontSize: 18, fontWeight: "bold", color: "#333" },
   cameraContainer: { flex: 1, position: "relative" },
-  camera:          { flex: 1 },
+  camera: { flex: 1 },
   camOverlay: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: "center",
@@ -267,16 +283,34 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     backgroundColor: "#FFFDF0",
   },
-  centro:          { flex: 1, alignItems: "center", justifyContent: "center" },
-  textoSimples:    { color: "#888", marginTop: 8 },
-  textoPermissao:  { fontSize: 16, color: "#555", textAlign: "center", marginBottom: 20, paddingHorizontal: 32 },
-  botao:           { backgroundColor: "#E6A817", borderRadius: 14, paddingHorizontal: 32, paddingVertical: 14 },
-  botaoTexto:      { color: "#FFF", fontSize: 16, fontWeight: "bold" },
-  carregando:      { marginTop: 12, color: "#888", fontSize: 14 },
-  aguardando:      { textAlign: "center", fontSize: 16, color: "#AAA" },
-  erroBox:         { backgroundColor: "#FFF0F0", borderRadius: 12, padding: 12, marginHorizontal: 16, borderWidth: 1, borderColor: "#FFB3B3" },
-  erroTitulo:      { color: "#D00", fontWeight: "bold", marginBottom: 4 },
-  erroTexto:       { color: "#D00", fontSize: 12 },
-  logBox:          { maxHeight: 100, backgroundColor: "#1a1a1a" },
-  logTexto:        { color: "#0f0", fontSize: 10, fontFamily: "monospace" },
+  centro: { flex: 1, alignItems: "center", justifyContent: "center" },
+  textoSimples: { color: "#888", marginTop: 8 },
+  textoPermissao: {
+    fontSize: 16,
+    color: "#555",
+    textAlign: "center",
+    marginBottom: 20,
+    paddingHorizontal: 32,
+  },
+  botao: {
+    backgroundColor: "#E6A817",
+    borderRadius: 14,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+  },
+  botaoTexto: { color: "#FFF", fontSize: 16, fontWeight: "bold" },
+  carregando: { marginTop: 12, color: "#888", fontSize: 14 },
+  aguardando: { textAlign: "center", fontSize: 16, color: "#AAA" },
+  erroBox: {
+    backgroundColor: "#FFF0F0",
+    borderRadius: 12,
+    padding: 12,
+    marginHorizontal: 16,
+    borderWidth: 1,
+    borderColor: "#FFB3B3",
+  },
+  erroTitulo: { color: "#D00", fontWeight: "bold", marginBottom: 4 },
+  erroTexto: { color: "#D00", fontSize: 12 },
+  logBox: { maxHeight: 100, backgroundColor: "#1a1a1a" },
+  logTexto: { color: "#0f0", fontSize: 10, fontFamily: "monospace" },
 });
