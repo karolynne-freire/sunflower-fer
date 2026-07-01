@@ -1,4 +1,4 @@
-🌻 Sunflower Vision
+# 🌻 Sunflower Vision
 
 > **Artefato Tecnológico — Disciplina de Inteligência Artificial**  
 > *Inspirado no projeto de pesquisa de Iniciação Científica (PIBIC) do IFPE*  
